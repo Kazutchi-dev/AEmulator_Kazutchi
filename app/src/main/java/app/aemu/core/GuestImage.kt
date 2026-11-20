@@ -23,6 +23,8 @@ data class VmSettings(
     /** HTTP/HTTPS-прокси с современным TLS для старых браузеров */
     val netProxy: Boolean = true,
     val lowRam: Boolean = false,
+    /** Keep guest processes alive when the host phone runs low on memory. */
+    val preserveGuestProcesses: Boolean = true,
     val showFrame: Boolean = false,
     val showNavBar: Boolean = true,
     /** buttons of the bar under the screen, in order: back home recents menu search volup voldown power dpad */
@@ -50,6 +52,7 @@ data class VmSettings(
         .put("width", width).put("height", height).put("density", density)
         .put("gpu", gpu).put("hwui", hwui).put("jit", jit).put("fullDexopt", fullDexopt).put("fbHz", fbHz)
         .put("touchHz", touchHz).put("netProxy", netProxy).put("lowRam", lowRam)
+        .put("preserveGuestProcesses", preserveGuestProcesses)
         .put("showFrame", showFrame).put("showNavBar", showNavBar).put("navKeys", navKeys).put("navSize", navSize)
         .put("keepScreenOn", keepScreenOn).put("showLed", showLed).put("mtMode", mtMode).put("legacyEngine", legacyEngine)
         .put("ramMb", ramMb).put("radio", radio).put("native32", native32).put("imei", imei).put("qemuArgs", qemuArgs)
@@ -84,6 +87,7 @@ data class VmSettings(
                 touchHz = o.optInt("touchHz", d.touchHz),
                 netProxy = o.optBoolean("netProxy", d.netProxy),
                 lowRam = o.optBoolean("lowRam", d.lowRam),
+                preserveGuestProcesses = o.optBoolean("preserveGuestProcesses", d.preserveGuestProcesses),
                 showFrame = o.optBoolean("showFrame", d.showFrame),
                 showNavBar = o.optBoolean("showNavBar", d.showNavBar),
                 navKeys = o.optString("navKeys", d.navKeys),
