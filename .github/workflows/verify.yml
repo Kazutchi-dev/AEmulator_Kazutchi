@@ -35,3 +35,33 @@ jobs:
         run: |
           chmod +x ./gradlew
           ./gradlew --no-daemon assembleStandardDebug
+
+      - name: Verify HTC engine assets are packaged
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$(find app/build/outputs/apk/standard/debug -name '*.apk' -print -quit)"
+          test -n "$apk"
+          index="$(unzip -p "$apk" assets/engines.idx)"
+          entries=(
+            engines/kk/libashmemshim.so
+            engines/kk/libGLES.so
+            engines/kk/audio.primary.default.so
+            engines/kk/aemu-stubs.jar
+            engines/common/libaemushim.so
+            engines/common/lights.default.so
+            engines/common/sensors.default.so
+            engines/common/camera.default.so
+          )
+          for entry in "${entries[@]}"; do
+            blob="$(awk -F '\t' -v path="$entry" '$1 == path { print $2; exit }' <<< "$index")"
+            if [ -z "$blob" ]; then
+              echo "::error::Missing engine index entry: $entry"
+              exit 1
+            fi
+            if ! unzip -Z1 "$apk" | grep -Fxq "assets/blobs/$blob"; then
+              echo "::error::Missing engine blob for: $entry ($blob)"
+              exit 1
+            fi
+            echo "OK: $entry"
+          done
