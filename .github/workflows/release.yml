@@ -25,24 +25,28 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Configure release signing
+      - name: Restore persistent signing key
         env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          SIGNING_PASSPHRASE: ${{ secrets.ANDROID_SIGNING_PASSPHRASE }}
         run: |
           set -euo pipefail
-          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
-            echo "::error::Configure ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD repository secrets."
+          if [ -z "$SIGNING_PASSPHRASE" ]; then
+            echo "::error::Add the ANDROID_SIGNING_PASSPHRASE repository secret first."
             exit 1
           fi
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > release.jks
+          if [ ! -f .github/signing/release.jks.gpg ]; then
+            echo "::error::Signing key is not initialized. Run the 'Initialize Android signing key' workflow first."
+            exit 1
+          fi
+          gpg --batch --yes --pinentry-mode loopback \
+            --passphrase "$SIGNING_PASSPHRASE" \
+            --output release.jks \
+            --decrypt .github/signing/release.jks.gpg
           {
             echo "storeFile=release.jks"
-            echo "storePassword=$KEYSTORE_PASSWORD"
-            echo "keyAlias=$KEY_ALIAS"
-            echo "keyPassword=$KEY_PASSWORD"
+            echo "storePassword=$SIGNING_PASSPHRASE"
+            echo "keyAlias=aemulator"
+            echo "keyPassword=$SIGNING_PASSPHRASE"
           } > keystore.properties
 
       - name: Build release APK
