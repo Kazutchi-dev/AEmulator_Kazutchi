@@ -72,7 +72,8 @@ class GuestScreen(ctx: Context, private val w: Int, private val h: Int) : View(c
         Thread({
             while (live) {
                 runCatching { tick() }
-                synchronized(gate) { runCatching { gate.wait(if (quiet > 30 || (passthrough && direct != null)) 16L else 5L) } }
+                // FrameBell wakes this worker when fb0 changes; 16 ms is only a safety poll, avoiding 5 ms idle wakeups.
+                synchronized(gate) { runCatching { gate.wait(16L) } }
             }
         }, "guest-fb").apply { isDaemon = true; start() }
     }
