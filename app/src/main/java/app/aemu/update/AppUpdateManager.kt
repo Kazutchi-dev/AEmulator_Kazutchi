@@ -36,8 +36,8 @@ sealed interface UpdateState {
 }
 
 object AppUpdateManager {
-    private const val RELEASES_API = "https://api.github.com/repos/uxazu/AEmulator/releases"
-    private const val GITHUB_REPO_URL = "https://github.com/uxazu/AEmulator"
+    private const val RELEASES_API = "https://api.github.com/repos/Kazutchi-dev/AEmulator_Kazutchi/releases"
+    private const val GITHUB_REPO_URL = "https://github.com/Kazutchi-dev/AEmulator_Kazutchi"
 
     /**
      * Запрос к GitHub API для получения информации о последнем релизе с APK-файлом.
@@ -133,7 +133,7 @@ object AppUpdateManager {
         // Очищаем старые apk перед новой загрузкой
         updatesDir.listFiles()?.forEach { if (it.extension.equals("apk", ignoreCase = true)) it.delete() }
 
-        val targetFile = File(updatesDir, "aemulator-${release.versionName}.apk")
+        val targetFile = File(updatesDir, "aemulator-kazutchi-${release.versionName}.apk")
 
         var currentUrl = release.downloadUrl
         var conn: HttpURLConnection
