@@ -18,8 +18,8 @@ import java.nio.channels.FileChannel
 /**
  * Слой поверх экрана гостя: принимает касания и переводит их в координаты гостя.
  * В режиме прямого GPU (native arm64) прозрачен — кадр рисует мост в SurfaceView под ним.
- * В программном режиме (GB или без GPU) сам показывает fb0: отображает файл в память
- * и копирует в RGB565-битмап только когда кадр изменился.
+ * В режиме framebuffer (GB, KK через glserverd или без GPU) показывает fb0: отображает файл в память
+ * и копирует кадр в bitmap только при изменении изображения.
  */
 class GuestScreen(ctx: Context, private val w: Int, private val h: Int) : View(ctx) {
     var input: InputService? = null
