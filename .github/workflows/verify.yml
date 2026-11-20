@@ -1,0 +1,35 @@
+name: Verify Android build
+
+on:
+  push:
+    branches:
+      - investigation/htc-one-44-runtime-crash
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build standard debug APK
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon assembleStandardDebug
