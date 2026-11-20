@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+- Rebranded the application as AEmulator Kazutchi and redirected in-app update checks to this fork's GitHub Releases.
+- Updated the app version to 0.0.0.4.
+- GPU acceleration remains enabled by default for new firmware; Android 4.4 uses the existing host GPU GL bridge when the per-firmware GPU option is enabled.
+
 - Added a per-firmware option to preserve guest background processes under host memory pressure. Host Android may still terminate AEmulator if system memory is exhausted.
 
 ### Emulation
