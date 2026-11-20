@@ -1069,16 +1069,16 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
                     val p = synchronized(procs) { procs[name] } ?: continue
                     val code = runCatching { p.exitValue() }.getOrDefault(-1)
                     if (name == "zygote" || name == "zygote_secondary") {
-                        if (state != State.FAILED && bootDoneAt == 0L && !(everBooted && zygoteRestarts < 6)) {
-                            failure = "$name exited (code $code)" + if (code == 137) " — killed: the phone ran out of memory, or system_server died and took zygote with it (see the guest log)" else ""
-                            if (code == 137 && guestLogHas("No original dex files found"))
-                                failure = "system_server cannot start: the precompiled code of the framework (system/framework/oat) is missing from this container — import the firmware again"
-                            log("✖ $failure"); setState(State.FAILED)
-                        } else if (plannedRestart) {
+                        if (plannedRestart) {
                             plannedRestart = false
                             killZygoteChildren()
                             TreeFixer(ctx, paths, img, ::log).noScreenSleep()
                             restartZygote()
+                        } else if (state != State.FAILED && bootDoneAt == 0L && !(everBooted && zygoteRestarts < 6)) {
+                            failure = "$name exited (code $code)" + if (code == 137) " — killed: the phone ran out of memory, or system_server died and took zygote with it (see the guest log)" else ""
+                            if (code == 137 && guestLogHas("No original dex files found"))
+                                failure = "system_server cannot start: the precompiled code of the framework (system/framework/oat) is missing from this container — import the firmware again"
+                            log("✖ $failure"); setState(State.FAILED)
                         } else if (bootDoneAt > 0 || everBooted) {
                             zygoteRestarts++
                             val now = System.currentTimeMillis()
