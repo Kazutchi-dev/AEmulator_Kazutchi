@@ -120,6 +120,9 @@ fun SettingsSheet(img: GuestImage, onDismiss: () -> Unit, onSave: (VmSettings) -
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
             )
             Toggle(stringResource(R.string.vs_lowram), stringResource(R.string.vs_lowram_sub), s.lowRam) { s = s.copy(lowRam = it) }
+            Toggle(stringResource(R.string.vs_keep_guest), stringResource(R.string.vs_keep_guest_sub), s.preserveGuestProcesses) {
+                s = s.copy(preserveGuestProcesses = it)
+            }
             Toggle(stringResource(R.string.vs_proxy), stringResource(R.string.vs_proxy_sub), s.netProxy) { s = s.copy(netProxy = it) }
 
             Spacer(Modifier.height(8.dp))
