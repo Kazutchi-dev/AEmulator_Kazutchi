@@ -1188,26 +1188,31 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
     private var wizardSkipped = false
 
     private fun restartZygote() {
-        val z = img.services.firstOrNull { it.name == "zygote" } ?: return
+        // Read the current init.rc plan: images imported by older app versions may have a stale service snapshot.
+        val plan = servicePlan()
+        val z = plan.firstOrNull { it.name == "zygote" } ?: img.services.firstOrNull { it.name == "zygote" } ?: run {
+            log("✖ cannot restart zygote: no service definition")
+            plannedRestart = false
+            return
+        }
         bootDoneAt = 0
         setState(State.BOOTING)
         paths.socket("zygote").delete()
         paths.socket("zygote_secondary").delete()
-        // на настоящем ядре дети зиготы гибнут вместе с system_server; здесь они остаются жить и
-        // держат ссылки на мёртвые службы (телефония отказывает новому system_server в правах)
+        // On a real kernel, zygote children die with system_server; here they survive and keep references to dead services.
         val n = killZygoteChildren()
         if (n > 0) log("killed apps of previous zygote: $n")
-        // healthd keeps the battery listener of the dead system_server and stops answering the new one:
-        // BatteryService.onStart then blocks in registerListener forever
-        img.services.firstOrNull { it.name == "healthd" }?.let { h ->
+        // healthd keeps the battery listener of the dead system_server and stops answering the new one.
+        plan.firstOrNull { it.name == "healthd" }?.let { h ->
             synchronized(procs) { procs.remove("healthd") }?.let { runCatching { it.destroyForcibly() } }
             runCatching { startService(h) }
         }
         runCatching { startService(z) }
-        img.services.firstOrNull { it.name == "zygote_secondary" }?.let { z2 ->
+        plan.firstOrNull { it.name == "zygote_secondary" }?.let { z2 ->
             synchronized(procs) { procs.remove("zygote_secondary") }?.let { runCatching { it.destroyForcibly() } }
             runCatching { startService(z2) }
         }
+        plannedRestart = false
     }
 
     private fun guestLogHas(text: String): Boolean = runCatching {
