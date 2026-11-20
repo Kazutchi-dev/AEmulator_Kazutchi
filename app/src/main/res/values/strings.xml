@@ -49,6 +49,8 @@
     <string name="vs_native32_unsupported">Hardware 32-bit (AArch32 EL0) is not supported by your device CPU; QEMU translation used.</string>
     <string name="vs_lowram">Low memory mode</string>
     <string name="vs_lowram_sub">ro.config.low_ram — the system saves memory.</string>
+    <string name="vs_keep_guest">Keep guest apps running</string>
+    <string name="vs_keep_guest_sub">Do not kill guest background processes when the phone is low on memory. The host Android system can still stop AEmulator if memory is exhausted.</string>
     <string name="vs_proxy">Modern TLS proxy</string>
     <string name="vs_proxy_sub">Lets old browsers and apps open today’s HTTPS sites.</string>
     <string name="vs_controls">Controls</string>
