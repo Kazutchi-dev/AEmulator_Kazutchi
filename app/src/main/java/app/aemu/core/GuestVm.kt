@@ -640,6 +640,8 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
 
     private fun glUp() {
         if (!settings.gpu) { log("GPU bridge off, software rendering"); return }
+        log("graphics: host GPU acceleration enabled (engine=${engine.title}, guest API=${img.api}, HWUI=${settings.hwui})")
+        if (engine == Engine.KK) log("graphics: Android 4.x GLES commands will be forwarded through the host GL bridge")
         val (w, h) = if (engine == Engine.GB) 480 to 800 else settings.width to settings.height
         paths.glSock.parentFile?.mkdirs()
         paths.glSock.delete()
