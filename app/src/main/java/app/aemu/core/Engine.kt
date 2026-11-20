@@ -6,7 +6,7 @@ package app.aemu.core
  *
  * GB — Android 2.x (Gingerbread/Froyo): GL рисуется в pbuffer и читается в fb0, binder и GL-сервер
  *      живут в отдельных процессах-«слотах» приложения.
- * KK — Android 4.x и новее: GL-мост работает прямо в процессе приложения и рисует в Surface.
+ * KK — Android 4.x and newer: GLES is served by an isolated glserverd process; frames are presented by the app.
  */
 enum class Engine(
     val id: String,
