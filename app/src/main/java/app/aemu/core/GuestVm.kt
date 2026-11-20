@@ -857,7 +857,10 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
         // SurfaceFlinger has just come up (it resets this before starting the boot animation)
         if (k == "service.bootanim.exit" && v == "0" && engine == Engine.N64 && kernel.clientComposition)
             Thread { clientComposition() }.start()
-        if (k == "service.bootanim.exit" && v == "1" && screenUpAt == 0L) screenUpAt = System.currentTimeMillis()
+        if (k == "service.bootanim.exit" && v == "1" && screenUpAt == 0L) {
+            screenUpAt = System.currentTimeMillis()
+            log("★ display ready in ${(screenUpAt - bootAt) / 1000} s (boot animation exited)")
+        }
         if ((k == "sys.boot_completed" || k == "dev.bootcomplete") && v == "1" && bootDoneAt == 0L) {
             bootDoneAt = System.currentTimeMillis()
             everBooted = true
@@ -1094,9 +1097,12 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
                         continue
                     }
                     val n = restarts.getOrDefault(name, 0)
-                    val svc = if (name == "surfaceflinger") servicePlan().firstOrNull { it.name == name }
-                        else img.services.firstOrNull { it.name == name }
+                    val svc = if (name == "surfaceflinger") {
+                        servicePlan().firstOrNull { it.name == name } ?: img.services.firstOrNull { it.name == name }
+                    } else {
+                        img.services.firstOrNull { it.name == name }
                             ?: if (name.contains("-hal-") && n < 3) servicePlan().firstOrNull { it.name == name } else null
+                    }
                     // SurfaceFlinger is essential even before boot_completed. A crash during the first boot used to
                     // be ignored here, leaving zygote/system_server alive without a compositor and the user waiting
                     // forever on a blank/frozen surface. Retry a few times during boot, and keep the wider post-boot
