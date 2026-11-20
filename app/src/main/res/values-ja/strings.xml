@@ -45,6 +45,8 @@
     <string name="vs_legacy_sub">旧 Desire HD エンジン：GLES 1.x のみ、480×800 画面。メインエンジンで失敗した場合に。</string>
     <string name="vs_lowram">低メモリーモード</string>
     <string name="vs_lowram_sub">ro.config.low_ram — システムがメモリーを節約します。</string>
+    <string name="vs_keep_guest">ゲストのアプリを維持</string>
+    <string name="vs_keep_guest_sub">ホスト端末のメモリー不足を理由に、ゲストのバックグラウンドプロセスを強制終了しません。ただし、メモリーが尽きるとホストAndroidがAEmulator自体を終了する場合があります。</string>
     <string name="vs_proxy">最新 TLS プロキシ</string>
     <string name="vs_proxy_sub">古いブラウザーやアプリで現在の HTTPS サイトを開けます。</string>
     <string name="vs_controls">操作</string>
