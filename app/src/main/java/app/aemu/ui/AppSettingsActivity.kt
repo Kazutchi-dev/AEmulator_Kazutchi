@@ -87,7 +87,7 @@ import app.aemu.R
 /** Ссылки проекта — одни и те же в приложении, README и на сайте. */
 object Links {
     const val SITE = "https://aemulator.gt.tc"
-    const val GITHUB = "https://github.com/uxazu/aemulator"
+    const val GITHUB = "https://github.com/Kazutchi-dev/AEmulator_Kazutchi"
     const val CHANNEL = "https://t.me/aemulatorofficial"
     const val AUTHOR = "https://github.com/uxazu"
     const val ORIGINAL = "https://t.me/istratii_tech1"
@@ -257,7 +257,7 @@ private fun AppSettings(onBack: () -> Unit, onRestyle: () -> Unit) {
                     Row_(Icons.Rounded.Send, stringResource(R.string.as_channel), "@aemulatorofficial") { open(Links.CHANNEL) }
                     Row_(Icons.Rounded.Person, stringResource(R.string.as_author), "uxazu") { open(Links.AUTHOR) }
                     Row_(Icons.Rounded.History, stringResource(R.string.as_orig), "t.me/istratii_tech1") { open(Links.ORIGINAL) }
-                    Row_(Icons.Rounded.Code, stringResource(R.string.as_github), "github.com/uxazu/aemulator") { open(Links.GITHUB) }
+                    Row_(Icons.Rounded.Code, stringResource(R.string.as_github), "github.com/Kazutchi-dev/AEmulator_Kazutchi") { open(Links.GITHUB) }
                 }
             }
 
@@ -314,7 +314,7 @@ private fun AboutCard() {
             Image(painterResource(R.drawable.logo), null, Modifier.size(64.dp).clip(RoundedCornerShape(20.dp)))
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
-                Text("AEmulator", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text("AEmulator Kazutchi", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
                 Text(stringResource(R.string.as_version, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onPrimaryContainer)
                 Spacer(Modifier.height(4.dp))
