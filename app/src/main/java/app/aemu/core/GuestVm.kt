@@ -683,7 +683,9 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
                 spawn("glserverd", listOf(paths.nativeBin(engine.glserverd).absolutePath,
                     "-s", paths.glSock.absolutePath, "-fb", paths.fb.absolutePath,
                     "-notify", paths.frameSock.absolutePath, "-w", "$w", "-h", "$h"), glServerEnv())
-                waitFor("GL bridge socket", 10_000) { paths.glSock.exists() }
+                if (!waitFor("GL bridge socket", 10_000) { paths.glSock.exists() }) {
+                    error("GPU bridge server did not become ready; check glserverd.log or disable GPU acceleration")
+                }
             }
         }
     }
