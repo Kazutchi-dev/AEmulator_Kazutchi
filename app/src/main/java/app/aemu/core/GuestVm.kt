@@ -677,13 +677,23 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
                 val sf = surface
                 HostNative.relaxFdsanSafe()
                 // 5.0+: hwui's GL stream has crashed the in-app bridge (SIGSEGV in serve_one_raw took the whole app down);
-                // the standalone glserverd keeps such a crash inside its own process
-                if (img.api < 21 && sf != null && GlBridge.start(sf, paths.glSock.absolutePath, paths.log("glbridge").absolutePath, w, h, false)) {
+                // the standalone glserverd keeps such a crash inside its own process.
+                // Android 4.4 (API 19–20) also uses the isolated path for now: on API 19, SurfaceFlinger
+                // repeatedly died only when GPU acceleration was enabled. Bypass the in-app JNI bridge
+                // to separate that failure mode from the guest GLES driver; keep 2.3–4.3 unchanged.
+                val inAppBridgeAllowed = img.api !in 19..20
+                if (img.api < 21 && inAppBridgeAllowed && sf != null &&
+                    GlBridge.start(sf, paths.glSock.absolutePath, paths.log("glbridge").absolutePath, w, h, false)) {
                     log("★ GPU bridge running in-app: frames render straight to the surface")
                     waitFor("GL bridge socket", 5_000) { paths.glSock.exists() }
                     return
                 }
-                log(if (img.api >= 21) "GPU bridge: standalone glserverd" else "in-app GPU bridge failed, falling back to standalone glserverd")
+                val bridgeMode = when {
+                    img.api >= 21 -> "GPU bridge: standalone glserverd"
+                    img.api in 19..20 -> "Android 4.4: bypassing in-app bridge; using standalone glserverd"
+                    else -> "in-app GPU bridge failed, falling back to standalone glserverd"
+                }
+                log(bridgeMode)
                 spawn("glserverd", listOf(paths.nativeBin(engine.glserverd).absolutePath,
                     "-s", paths.glSock.absolutePath, "-fb", paths.fb.absolutePath,
                     "-notify", paths.frameSock.absolutePath, "-w", "$w", "-h", "$h"), glServerEnv())
