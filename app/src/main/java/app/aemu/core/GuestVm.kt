@@ -7,7 +7,6 @@ import android.view.Surface
 import dev.lk.dhd.BinderSlot
 import dev.lk.dhd.GlSlot
 import dev.lk.dhd.Slot
-import dev.lk.m7sense.GlBridge
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
@@ -69,7 +68,7 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
     @Volatile var failure: String? = null
         private set
     @Volatile var surface: Surface? = null
-        set(v) { field = v; if (engine == Engine.KK) GlBridge.surface(v) else if (engine == Engine.N64 && kernel.gpuBridge64) GlHost.surface(v) }
+        set(v) { field = v; if (engine == Engine.N64 && kernel.gpuBridge64) GlHost.surface(v) }
 
     private val lines = CopyOnWriteArrayList<String>()
     private val listeners = CopyOnWriteArrayList<(String) -> Unit>()
@@ -703,7 +702,6 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
     private val n64Has32: Boolean get() = paths.nativeBin("libqemu_arm.so").canExecute() &&
             File(paths.root, "system/bin/app_process32").isFile
 
-    val glInApp: Boolean get() = engine == Engine.KK && GlBridge.running()
 
     private fun startService(svc0: GuestService, propsFile: File? = null) {
         // The second zygote is of the other word size than the first. A firmware that ships all three zygote rc files
