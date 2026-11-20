@@ -673,9 +673,7 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
                 waitFor("GL bridge socket", 10_000) { paths.glSock.exists() }
             }
             Engine.KK -> {
-                if (surface == null) waitFor("screen surface", 10_000) { surface != null }
-                val sf = surface
-                HostNative.relaxFdsanSafe()
+                // The isolated renderer does not need the app Surface during startup.
                 // Use the isolated server on every guest OS generation. The in-app JNI bridge shares
                 // the emulator process with the UI and Surface; native renderer faults can therefore
                 // terminate the whole app. The standalone server is already the supported fallback for
