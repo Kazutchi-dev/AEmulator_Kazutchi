@@ -56,13 +56,13 @@ jobs:
           chmod +x ./gradlew
           ./gradlew --no-daemon assembleStandardRelease
           mkdir -p release-output
-          cp app/build/outputs/apk/standard/release/*.apk release-output/AEmulator-Kazutchi-0.0.0.4.apk
+          cp app/build/outputs/apk/standard/release/*.apk release-output/AEmulator-Kazutchi-0.0.0.6.apk
 
       - name: Upload APK artifact
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
-          name: AEmulator-Kazutchi-0.0.0.4
+          name: AEmulator-Kazutchi-0.0.0.6
           path: release-output/*.apk
           if-no-files-found: error
 
