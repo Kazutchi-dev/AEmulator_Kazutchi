@@ -255,7 +255,9 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
 
         // 1. дерево
         val fixer = TreeFixer(ctx, paths, img, ::log)
+        val firmwarePrepAt = SystemClock.elapsedRealtime()
         fixer.fixup()
+        log("boot timing: firmware fixup ${SystemClock.elapsedRealtime() - firmwarePrepAt} ms")
         // политика звука уже подменялась раньше — обновить её файлы (обёртка/AOSP) до текущей версии
         if (File(paths.root, "system/.aemu-parked/system#lib#hw#audio_policy.default.so").isFile) swapAudioPolicy()
         GuestLog.clear(paths.root)
@@ -546,7 +548,10 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
         }
 
         // 5. службы гостя по плану из init.rc прошивки
+        val planStartedAt = SystemClock.elapsedRealtime()
         val plan = servicePlan()
+        log("boot timing: service plan ${SystemClock.elapsedRealtime() - planStartedAt} ms (${plan.size} services)")
+        val serviceLoopAt = SystemClock.elapsedRealtime()
         var glDone = false
         // (debugging, see Kernel64.syncLog: only the first N services are started, then the guest is left as it is)
         val stopAfter = if (engine == Engine.N64 && kernel.syncLog) runCatching { File(paths.root, "dev/.aemu-stop-after").readText().trim().toInt() }.getOrNull() else null
@@ -602,10 +607,16 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
                 if (names.isNotEmpty()) startService(GuestService("aemu-standin", listOf("/system/bin/app_process",
                     "-Djava.class.path=/system/framework/aemu-stubs.jar", "/system/bin", "app.aemu.stub.StandIn") + names, optional = true))
             }
+            val serviceAt = SystemClock.elapsedRealtime()
             startService(svc)
+            val socketAt = SystemClock.elapsedRealtime()
             svc.waitSocket?.let { sock -> waitFor("socket $sock", 20_000) { paths.socket(sock).exists() } }
+            val socketWaitMs = SystemClock.elapsedRealtime() - socketAt
             if (svc.delayMs > 0) Thread.sleep(svc.delayMs)
+            val serviceElapsed = SystemClock.elapsedRealtime() - serviceAt
+            if (serviceElapsed >= 250L) log("boot timing: ${svc.name} start=${serviceElapsed} ms (socket=${socketWaitMs} ms, configuredDelay=${svc.delayMs} ms)")
         }
+        log("boot timing: service launch phase ${SystemClock.elapsedRealtime() - serviceLoopAt} ms")
         if (!glDone) glUp()
         log("system started: ${alive().joinToString()}")
         watchdog()
@@ -1083,17 +1094,30 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
                         continue
                     }
                     val n = restarts.getOrDefault(name, 0)
-                    val svc = img.services.firstOrNull { it.name == name }
-                        ?: if (name.contains("-hal-") && n < 3) servicePlan().firstOrNull { it.name == name } else null
-                    // init restarts surfaceflinger and then zygote ("onrestart restart zygote"); without that a
-                    // crashed compositor leaves the last frame on screen forever
-                    if (name == "surfaceflinger" && svc != null && bootDoneAt > 0 && n < 12) {
-                        restarts[name] = n + 1
-                        log("✖ surfaceflinger crashed (code $code), restarting it and the system (${n + 1}/12)")
-                        synchronized(procs) { procs.remove(name) }
-                        runCatching { startService(svc) }
-                        synchronized(procs) { procs["zygote"] }?.let { z -> pidOf(z)?.let { runCatching { AProcess.sendSignal(it, 9) } } }
-                        continue
+                    val svc = if (name == "surfaceflinger") servicePlan().firstOrNull { it.name == name }
+                        else img.services.firstOrNull { it.name == name }
+                            ?: if (name.contains("-hal-") && n < 3) servicePlan().firstOrNull { it.name == name } else null
+                    // SurfaceFlinger is essential even before boot_completed. A crash during the first boot used to
+                    // be ignored here, leaving zygote/system_server alive without a compositor and the user waiting
+                    // forever on a blank/frozen surface. Retry a few times during boot, and keep the wider post-boot
+                    // recovery budget for transient runtime crashes.
+                    if (name == "surfaceflinger" && svc != null) {
+                        val limit = if (bootDoneAt > 0L) 12 else 3
+                        if (n < limit) {
+                            restarts[name] = n + 1
+                            log("✖ surfaceflinger crashed (code $code) ${if (bootDoneAt > 0L) "after boot" else "during boot"}, restarting (${n + 1}/$limit)")
+                            synchronized(procs) { procs.remove(name) }
+                            runCatching { startService(svc) }
+                            synchronized(procs) { procs["zygote"] }?.let { z ->
+                                plannedRestart = true
+                                pidOf(z)?.let { runCatching { AProcess.sendSignal(it, 9) } }
+                            }
+                            continue
+                        } else if (bootDoneAt == 0L) {
+                            failure = "surfaceflinger failed $limit times during boot (last exit code $code); see surfaceflinger and glbridge logs"
+                            log("✖ $failure")
+                            setState(State.FAILED)
+                        }
                     }
                     // родной audio_policy производителя может падать с нашим HAL — подменяем на AOSP
                     if (name == "mediaserver" && (code == 139 || code == 134)) swapAudioPolicy(crashed = n >= 3)
