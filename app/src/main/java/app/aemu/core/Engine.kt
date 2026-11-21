@@ -6,7 +6,7 @@ package app.aemu.core
  *
  * GB — Android 2.x (Gingerbread/Froyo): GL рисуется в pbuffer и читается в fb0, binder и GL-сервер
  *      живут в отдельных процессах-«слотах» приложения.
- * KK — Android 4.x and newer: GLES is served by an isolated glserverd process; frames are presented by the app.
+ * KK — Android 4.x and newer: isolated glserverd is the compatibility path; Android 17+ can route API 19+ GLES through the in-app ANGLE-preferred renderer.
  */
 enum class Engine(
     val id: String,
