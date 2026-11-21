@@ -34,6 +34,8 @@ data class GuestFixRule(
     val engines: Set<Engine>? = null,
     val abis: Set<String>? = null,
     val runtimes: Set<String>? = null,
+    /** Regex selectors for guest build.prop keys such as ro.build.fingerprint or ro.product.device. */
+    val properties: Map<String, Regex>? = null,
     val gpuEnabled: Boolean? = null,
     val apply: TreeFixer.() -> Unit,
 ) {
@@ -46,6 +48,7 @@ data class GuestFixRule(
         (engines == null || target.engine in engines) &&
         (abis == null || target.abi in abis) &&
         (runtimes == null || target.runtime in runtimes) &&
+        (properties == null || properties.all { (key, pattern) -> pattern.containsMatchIn(target.property(key)) }) &&
         (gpuEnabled == null || target.gpuEnabled == gpuEnabled)
 }
 
