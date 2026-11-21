@@ -70,7 +70,7 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
     @Volatile var gpuDirect = false
         private set(value) {
             field = value
-            if (engine == Engine.KK) GlHost.surface(surface)
+            if (engine == Engine.KK && value) GlHost.surface(surface)
         }
     @Volatile var gpuRenderer: String = ""
         private set
@@ -260,6 +260,8 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
             else File(paths.bin, "SwiftShader.ini").writeText("[Processor]\nThreadCount=${Runtime.getRuntime().availableProcessors().coerceIn(1, 8)}\n")
         }
         killLeftovers()
+        gpuDirect = false
+        gpuRenderer = ""
         HostNative.limitStackSafe()
 
         // 1. дерево
