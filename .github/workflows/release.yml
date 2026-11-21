@@ -63,10 +63,7 @@ jobs:
             exit 1
           fi
           test -f .github/signing/release.jks.gpg
-          gpg --batch --yes --pinentry-mode loopback \\
-            --passphrase "$SIGNING_PASSPHRASE" \\
-            --output release.jks \\
-            --decrypt .github/signing/release.jks.gpg
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$SIGNING_PASSPHRASE" --output release.jks --decrypt .github/signing/release.jks.gpg
           {
             echo "storeFile=release.jks"
             echo "storePassword=$SIGNING_PASSPHRASE"
