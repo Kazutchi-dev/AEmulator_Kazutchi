@@ -52,6 +52,7 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add app/src/main/assets/engines/kk/libGLES_aemu.so
             git commit -m "Build Android 4.4-compatible GLES bridge"
+            git stash push --include-untracked -m "discard generated ANGLE build files"
             git fetch origin "$GITHUB_REF_NAME"
             if ! git rebase "origin/$GITHUB_REF_NAME"; then
               git rebase --abort
@@ -62,6 +63,7 @@ jobs:
               if ! git diff --cached --quiet; then
                 git commit -m "Build Android 4.4-compatible GLES bridge"
               fi
+              git stash push --include-untracked -m "discard generated ANGLE build files"
             fi
             git push origin "HEAD:$GITHUB_REF_NAME"
           fi
