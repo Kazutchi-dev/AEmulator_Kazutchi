@@ -85,6 +85,7 @@ class TreeFixer(
         File(root, "dev/binder").takeIf { it.isDirectory }?.let { wipe(it) }
         File(root, "dev/cpuctl").takeIf { it.exists() }?.let { wipe(it) }
         log("firmware prep: vendor modules set aside: $n")
+        applyGuestFixProfiles(GuestFixPhase.IMPORT)
     }
 
     // ---------------------------------------------------------------- перед каждым запуском
@@ -114,7 +115,7 @@ class TreeFixer(
      * Build properties are read from the imported guest tree so vendor-specific rules
      * can use ro.* identifiers without relying on the host phone's Android version.
      */
-    private fun applyGuestFixProfiles() {
+    private fun applyGuestFixProfiles(phase: GuestFixPhase) {
         val properties = HashMap<String, String>()
         for (rel in listOf("default.prop", "system/build.prop", "vendor/build.prop", "product/build.prop", "system/vendor/build.prop")) {
             val file = File(root, rel)
@@ -132,7 +133,7 @@ class TreeFixer(
         val target = GuestFixTarget(img, properties)
         var applied = 0
         for (rule in GuestFixProfiles.rules) {
-            if (!rule.matches(target)) continue
+            if (rule.phase != phase || !rule.matches(target)) continue
             try {
                 rule.apply(this)
                 applied++
@@ -141,14 +142,15 @@ class TreeFixer(
                 log("guest fix [${rule.id}] failed: ${t.message ?: t.javaClass.simpleName}")
             }
         }
-        log("guest fix profiles: $applied/${GuestFixProfiles.rules.size} matched")
+        val total = GuestFixProfiles.rules.count { it.phase == phase }
+        log("guest fix profiles ($phase): $applied/$total matched")
     }
 
     fun fixup(owners: Boolean = true) {
         if (owners) seedOwners()
         installEngineFiles()
         protectOat()
-        applyGuestFixProfiles()
+        applyGuestFixProfiles(GuestFixPhase.BOOT)
         parkQcomServices()
         eglConfig(img.settings.gpu)
         makeDataDirs()
