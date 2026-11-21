@@ -46,6 +46,7 @@ jobs:
         run: |
           chmod +x native/glbridge/build32.sh
           ./native/glbridge/build32.sh
+          git restore --source=HEAD --worktree -- native/glbridge/g_api.h native/glbridge/h_api.h
           if ! git diff --quiet -- app/src/main/assets/engines/kk/libGLES_aemu.so; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -56,6 +57,7 @@ jobs:
               git rebase --abort
               git reset --hard "origin/$GITHUB_REF_NAME"
               ./native/glbridge/build32.sh
+          git restore --source=HEAD --worktree -- native/glbridge/g_api.h native/glbridge/h_api.h
               git add app/src/main/assets/engines/kk/libGLES_aemu.so
               if ! git diff --cached --quiet; then
                 git commit -m "Build Android 4.4-compatible GLES bridge"
