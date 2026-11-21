@@ -34,9 +34,9 @@ jobs:
           packages: platform-tools platforms;android-36 build-tools;36.0.0
 
       - name: Set up Android NDK
-        uses: android-actions/setup-ndk@v3
+        uses: nttld/setup-ndk@v1
         with:
-          ndk-version: 27.2.12479018
+          ndk-version: r27d
 
       - name: Build Android 4.4-compatible guest GLES bridge
         run: |
