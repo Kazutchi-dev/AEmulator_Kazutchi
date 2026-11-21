@@ -109,14 +109,47 @@ class TreeFixer(
         if (n > 0) log("oat files write-protected: $n")
     }
 
+    /**
+     * Apply only the workarounds whose guest OS, firmware identity and engine match.
+     * Build properties are read from the imported guest tree so vendor-specific rules
+     * can use ro.* identifiers without relying on the host phone's Android version.
+     */
+    private fun applyGuestFixProfiles() {
+        val properties = HashMap<String, String>()
+        for (rel in listOf("default.prop", "system/build.prop", "vendor/build.prop", "product/build.prop", "system/vendor/build.prop")) {
+            val file = File(root, rel)
+            if (!file.isFile || file.length() > 2_000_000) continue
+            runCatching {
+                file.forEachLine { line ->
+                    val trimmed = line.trim()
+                    val split = trimmed.indexOf('=')
+                    if (split > 0 && !trimmed.startsWith("#")) {
+                        properties[trimmed.substring(0, split).trim()] = trimmed.substring(split + 1).trim()
+                    }
+                }
+            }.onFailure { log("fix profile: cannot read $rel: ${it.message}") }
+        }
+        val target = GuestFixTarget(img, properties)
+        var applied = 0
+        for (rule in GuestFixProfiles.rules) {
+            if (!rule.matches(target)) continue
+            try {
+                rule.apply(this)
+                applied++
+                log("guest fix [${rule.id}]: ${rule.description}")
+            } catch (t: Throwable) {
+                log("guest fix [${rule.id}] failed: ${t.message ?: t.javaClass.simpleName}")
+            }
+        }
+        log("guest fix profiles: $applied/${GuestFixProfiles.rules.size} matched")
+    }
+
     fun fixup(owners: Boolean = true) {
         if (owners) seedOwners()
         installEngineFiles()
         protectOat()
-        fixThemeXml()
-        parkWhetstone()
+        applyGuestFixProfiles()
         parkQcomServices()
-        swapMtkAudioHal()
         eglConfig(img.settings.gpu)
         makeDataDirs()
         miuiSdkFiles()
@@ -185,7 +218,7 @@ class TreeFixer(
      * (AudioMTKHardware, which needs the MTK sound driver — silent here). Park it as libaudio.mtk.so and put
      * our HAL there; it forwards the DcRemove filter AudioFlinger links from that library to the original.
      */
-    private fun swapMtkAudioHal() {
+    internal fun swapMtkAudioHal() {
         if (engine != Engine.KK || img.api < 17) return
         val lib = File(root, "system/lib/libaudio.primary.default.so")
         val orig = File(root, "system/lib/libaudio.mtk.so")
@@ -209,7 +242,7 @@ class TreeFixer(
      * then fail to initialise in every process and the system never finishes booting (black screen). Double hyphens
      * inside comments are separated so the file parses.
      */
-    private fun fixThemeXml() {
+    internal fun fixThemeXml() {
         val f = File(root, "system/media/theme/theme_compatibility.xml")
         if (!f.isFile || f.length() > 4_000_000) return
         runCatching {
@@ -236,7 +269,7 @@ class TreeFixer(
      * process in turn waits for the same lock. The watchdog then restarts system_server over and over and the boot never
      * finishes. Whetstone only does background-power bookkeeping, so its package is set aside.
      */
-    private fun parkWhetstone() {
+    internal fun parkWhetstone() {
         val apk = File(root, "system/app/Whetstone.apk")
         if (!apk.isFile || !File(root, "system/app/miuisystem.apk").isFile) return
         runCatching {
