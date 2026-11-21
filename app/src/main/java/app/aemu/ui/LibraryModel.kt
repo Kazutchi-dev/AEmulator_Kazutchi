@@ -114,7 +114,28 @@ class LibraryModel(app: Application) : AndroidViewModel(app) {
 
     fun rename(img: GuestImage, name: String) = update(img) { it.copy(name = name) }
 
-    fun updateSettings(img: GuestImage, s: VmSettings) = update(img) { it.copy(settings = s) }
+    /**
+     * Save settings before allowing the UI to start this image again.
+     * The completion callback runs only after the on-disk JSON has been read back and verified.
+     */
+    fun updateSettings(img: GuestImage, s: VmSettings, onComplete: (Result<Unit>) -> Unit = {}) {
+        viewModelScope.launch {
+            try {
+                val latest = withContext(Dispatchers.IO) {
+                    ImageStore.update(getApplication(), img.id) { current -> current.copy(settings = s) }
+                    val stored = ImageStore.get(getApplication(), img.id)
+                        ?: error("Firmware image disappeared while saving settings")
+                    check(stored.settings == s) { "Saved settings could not be verified" }
+                    ImageStore.list(getApplication())
+                }
+                _images.value = latest
+                onComplete(Result.success(Unit))
+            } catch (t: Throwable) {
+                if (t is kotlinx.coroutines.CancellationException) throw t
+                onComplete(Result.failure(t))
+            }
+        }
+    }
 
     private fun update(img: GuestImage, f: (GuestImage) -> GuestImage) {
         viewModelScope.launch(Dispatchers.IO) {
