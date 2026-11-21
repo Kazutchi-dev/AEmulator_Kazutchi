@@ -331,7 +331,7 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
                 if (r.contains("ANGLE", ignoreCase = true)) {
                     log("graphics backend: ANGLE${if (r.contains("Vulkan", ignoreCase = true)) " / Vulkan" else ""}")
                 } else {
-                    log("graphics backend: host GLES fallback (ANGLE was not identified by the renderer string)")
+                    log("graphics backend: ANGLE not confirmed by GL_RENDERER/GL_VERSION; host GLES path is active")
                 }
             } else {
                 GlHost.stop()
@@ -700,7 +700,7 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
     private fun glUp() {
         if (!settings.gpu) { log("GPU bridge off, software rendering"); return }
         log("graphics: host GPU acceleration enabled (engine=${engine.title}, guest API=${img.api}, HWUI=${settings.hwui})")
-        if (engine == Engine.KK) log("graphics: guest GLES commands will be served by isolated glserverd")
+        if (engine == Engine.KK) log(if (gpuDirect) "graphics: ANGLE-preferred in-process host renderer selected" else "graphics: isolated glserverd compatibility path selected")
         val (w, h) = if (engine == Engine.GB) 480 to 800 else settings.width to settings.height
         paths.glSock.parentFile?.mkdirs()
         paths.glSock.delete()
