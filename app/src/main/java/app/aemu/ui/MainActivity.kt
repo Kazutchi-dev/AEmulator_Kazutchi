@@ -257,7 +257,7 @@ fun Library(model: LibraryModel) {
     }
 
     settingsFor?.let { img ->
-        SettingsSheet(img, onDismiss = { settingsFor = null }, onSave = { s -> model.updateSettings(img, s); settingsFor = null })
+        SettingsSheet(img, onDismiss = { settingsFor = null }, onSave = { s, complete -> model.updateSettings(img, s, complete) })
     }
     resetFor?.let { img ->
         AlertDialog(
