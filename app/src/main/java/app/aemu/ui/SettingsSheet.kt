@@ -56,10 +56,17 @@ private val RESOLUTIONS = listOf(
 private val RAM_STEPS = listOf(0, 256, 512, 768, 1024, 1536, 2048, 3072, 4096)
 
 @Composable
-fun SettingsSheet(img: GuestImage, onDismiss: () -> Unit, onSave: (VmSettings) -> Unit) {
-    var s by remember { mutableStateOf(img.settings) }
-    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
+fun SettingsSheet(img: GuestImage, onDismiss: () -> Unit, onSave: (VmSettings, (Result<Unit>) -> Unit) -> Unit) {
+    var s by remember(img.id) { mutableStateOf(img.settings) }
+    var saving by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val state = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { target ->
+            target != androidx.compose.material3.SheetValue.Hidden || !saving
+        },
+    )
+    ModalBottomSheet(onDismissRequest = { if (!saving) onDismiss() }, sheetState = state) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).navigationBarsPadding()) {
             Text(stringResource(R.string.settings), style = MaterialTheme.typography.headlineSmall)
             Text(img.name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -153,7 +160,25 @@ fun SettingsSheet(img: GuestImage, onDismiss: () -> Unit, onSave: (VmSettings) -
             Toggle(stringResource(R.string.vs_single), stringResource(R.string.vs_single_sub), s.mtMode == 4) { s = s.copy(mtMode = if (it) 4 else 0) }
 
             Spacer(Modifier.height(16.dp))
-            Button(onClick = { onSave(s) }, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text(stringResource(R.string.save)) }
+            Button(
+                enabled = !saving,
+                onClick = {
+                    saving = true
+                    onSave(s) { result ->
+                        saving = false
+                        if (result.isSuccess) {
+                            onDismiss()
+                        } else {
+                            android.widget.Toast.makeText(
+                                context,
+                                result.exceptionOrNull()?.localizedMessage ?: "Failed to save machine settings",
+                                android.widget.Toast.LENGTH_LONG,
+                            ).show()
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) { Text(stringResource(R.string.save)) }
             Spacer(Modifier.height(16.dp))
         }
     }
