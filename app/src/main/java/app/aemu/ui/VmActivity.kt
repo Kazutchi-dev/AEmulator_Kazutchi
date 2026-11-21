@@ -200,7 +200,8 @@ class VmActivity : ComponentActivity() {
         }
         // KK uses the isolated glserverd framebuffer path on every guest API; do not bypass fb0.
         // The native arm64 engine can present directly to SurfaceView when its GLES bridge is active.
-        val direct = vm.engine == Engine.N64 && vm.kernel.gpuBridge64 && s.gpu && !vm.recoveryMode
+        val direct = !vm.recoveryMode && s.gpu &&
+            ((vm.engine == Engine.N64 && vm.kernel.gpuBridge64) || (vm.engine == Engine.KK && vm.gpuDirect))
         if (direct) { surfaceView.holder.setFixedSize(gw, gh); guest.direct = { app.aemu.core.GlHost.presented() } }
         surfaceView.visibility = if (direct) View.VISIBLE else View.GONE
         box.addView(surfaceView, FrameLayout.LayoutParams(-1, -1))
