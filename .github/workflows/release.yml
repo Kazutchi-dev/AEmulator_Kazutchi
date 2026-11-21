@@ -27,6 +27,16 @@ jobs:
         with:
           packages: platform-tools
 
+      - name: Set up Android NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r21e
+
+      - name: Build Android 4.4-compatible guest GLES bridge
+        run: |
+          chmod +x native/glbridge/build32.sh
+          ./native/glbridge/build32.sh
+
       - name: Restore persistent signing key
         env:
           SIGNING_PASSPHRASE: ${{ secrets.ANDROID_SIGNING_PASSPHRASE }}
