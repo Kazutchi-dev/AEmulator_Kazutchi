@@ -48,6 +48,12 @@ jobs:
         with:
           ndk-version: r27d
 
+      - name: Build dhdrun host executables
+        run: |
+          set -euo pipefail
+          chmod +x native/hostjni/build-dhdrun.sh
+          ./native/hostjni/build-dhdrun.sh
+
       - name: Build Android 4.4-compatible guest GLES bridge
         run: |
           chmod +x native/glbridge/build32.sh

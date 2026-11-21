@@ -103,3 +103,13 @@ jobs:
             fi
             echo "OK: $entry"
           done
+
+      - name: Verify dhdrun executables are packaged
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$(find app/build/outputs/apk/standard/debug -name '*.apk' -print -quit)"
+          test -n "$apk"
+          for name in libdhdrun_gb.so libdhdrun_kk.so; do
+            unzip -Z1 "$apk" | grep -Fx "lib/arm64-v8a/$name"
+          done
