@@ -11,6 +11,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: angle-bridge-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -36,7 +40,7 @@ jobs:
       - name: Set up Android NDK
         uses: nttld/setup-ndk@v1
         with:
-          ndk-version: r21e
+          ndk-version: r27d
 
       - name: Build Android 4.4-compatible guest GLES bridge
         run: |
