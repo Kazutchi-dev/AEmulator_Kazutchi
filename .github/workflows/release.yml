@@ -27,7 +27,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION_NAME="$(sed -n 's/^[[:space:]]*versionName = "\\([^"]*\\)".*/\\1/p' app/build.gradle.kts | head -n1)"
+          VERSION_NAME="$(awk -F'"' '/^[[:space:]]*versionName = / {print $2; exit}' app/build.gradle.kts)"
           test -n "$VERSION_NAME"
           echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION_NAME" >> "$GITHUB_OUTPUT"
