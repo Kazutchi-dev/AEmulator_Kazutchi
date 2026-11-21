@@ -67,8 +67,18 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
         private set
     @Volatile var failure: String? = null
         private set
+    @Volatile var gpuDirect = false
+        private set(value) {
+            field = value
+            if (engine == Engine.KK) GlHost.surface(surface)
+        }
+    @Volatile var gpuRenderer: String = ""
+        private set
     @Volatile var surface: Surface? = null
-        set(v) { field = v; if (engine == Engine.N64 && kernel.gpuBridge64) GlHost.surface(v) }
+        set(v) {
+            field = v
+            if ((engine == Engine.N64 && kernel.gpuBridge64) || (engine == Engine.KK && gpuDirect)) GlHost.surface(v)
+        }
 
     private val lines = CopyOnWriteArrayList<String>()
     private val listeners = CopyOnWriteArrayList<(String) -> Unit>()
@@ -254,6 +264,17 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
 
         // 1. дерево
         val fixer = TreeFixer(ctx, paths, img, ::log)
+        // Android 17 can prefer the system ANGLE GLES driver for this Java-launched host process.
+        // Route KK's API 19+ guest GLES calls through the in-process host renderer so ANGLE can actually see them;
+        // native glserverd executables cannot use Android's package-selected ANGLE driver.
+        val openGlFlag = File(paths.dir, "glopen")
+        val autoAngleBridge = engine == Engine.KK && settings.gpu && img.api >= 19 &&
+            android.os.Build.VERSION.SDK_INT >= 37 && !openGlFlag.exists()
+        if (autoAngleBridge) {
+            paths.dir.mkdirs()
+            openGlFlag.writeText("2")
+            log("graphics: enabling ANGLE-compatible in-process bridge for this host (Android 17+)")
+        }
         val firmwarePrepAt = SystemClock.elapsedRealtime()
         fixer.fixup()
         log("boot timing: firmware fixup ${SystemClock.elapsedRealtime() - firmwarePrepAt} ms")
@@ -289,9 +310,25 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
         // threads share their tiles through those - in mode 1 they stay on it and a page draws only its background)
         if (engine == Engine.KK && s.gpu && File(paths.dir, "glopen").isFile && File(paths.root, "system/lib/egl/libGLES_split.so").isFile) {
             paths.socket("aemu_gl").parentFile?.mkdirs()
+            val requestedMode = File(paths.dir, "glopen").readText().trim().ifEmpty { "2" }
             val r = GlHost.start(paths.socket("aemu_gl").absolutePath)
             log("open GPU bridge (32-bit): $r")
-            if (r.startsWith("ok")) overrides["debug.aemu.gl"] = File(paths.dir, "glopen").readText().trim().takeIf { it.isNotEmpty() } ?: "2"
+            if (r.startsWith("ok")) {
+                gpuRenderer = r
+                gpuDirect = true
+                overrides["debug.aemu.gl"] = requestedMode
+                if (r.contains("ANGLE", ignoreCase = true)) {
+                    log("graphics backend: ANGLE${if (r.contains("Vulkan", ignoreCase = true)) " / Vulkan" else ""}")
+                } else {
+                    log("graphics backend: host GLES fallback (ANGLE was not identified by the renderer string)")
+                }
+            } else {
+                GlHost.stop()
+                log("open GPU bridge unavailable; restoring isolated renderer")
+                File(paths.dir, "glopen").delete()
+                fixer.fixup()
+                if (!autoAngleBridge) File(paths.dir, "glopen").writeText(requestedMode)
+            }
         }
         // 7.0+ libEGL ignores egl.cfg and takes the first libGLES_*.so it finds; without the bridge: the software one
         if (img.api >= 24 && !s.gpu) {
@@ -672,18 +709,18 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
                 waitFor("GL bridge socket", 10_000) { paths.glSock.exists() }
             }
             Engine.KK -> {
-                // The isolated renderer does not need the app Surface during startup.
-                // Use the isolated server on every guest OS generation. The in-app JNI bridge shares
-                // the emulator process with the UI and Surface; native renderer faults can therefore
-                // terminate the whole app. The standalone server is already the supported fallback for
-                // this engine and keeps GLES failures in a child process (Android 2.3 through 7.x).
-                // Keep the old bridge class available for compatibility, but do not start it here.
-                log("GPU bridge: isolated glserverd (guest API ${img.api})")
-                spawn("glserverd", listOf(paths.nativeBin(engine.glserverd).absolutePath,
-                    "-s", paths.glSock.absolutePath, "-fb", paths.fb.absolutePath,
-                    "-notify", paths.frameSock.absolutePath, "-w", "$w", "-h", "$h"), glServerEnv())
-                if (!waitFor("GL bridge socket", 10_000) { paths.glSock.exists() }) {
-                    error("GPU bridge server did not become ready; check glserverd.log or disable GPU acceleration")
+                if (gpuDirect) {
+                    log("GPU bridge: in-process host renderer (${gpuRenderer.ifBlank { "ANGLE-preferred" }})")
+                } else {
+                    // Compatibility path for older host OS versions, guest API levels below 19,
+                    // and devices where the in-process GLES 3 context is unavailable.
+                    log("GPU bridge: isolated glserverd (guest API ${img.api})")
+                    spawn("glserverd", listOf(paths.nativeBin(engine.glserverd).absolutePath,
+                        "-s", paths.glSock.absolutePath, "-fb", paths.fb.absolutePath,
+                        "-notify", paths.frameSock.absolutePath, "-w", "$w", "-h", "$h"), glServerEnv())
+                    if (!waitFor("GL bridge socket", 10_000) { paths.glSock.exists() }) {
+                        error("GPU bridge server did not become ready; check glserverd.log or disable GPU acceleration")
+                    }
                 }
             }
         }
