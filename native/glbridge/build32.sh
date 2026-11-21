@@ -11,4 +11,5 @@ O=../../app/src/main/assets/engines/kk/libGLES_aemu.so
 "$BIN/clang" --target=armv7a-linux-androideabi21 -O2 -fPIC -shared -fvisibility=hidden -Wall -Wno-unused-function \
   -Wl,-soname,libGLES_aemu.so -o $O guest.c -llog -ldl || exit 1
 "$BIN/llvm-strip" $O
+chmod 644 $O
 ls -la $O
