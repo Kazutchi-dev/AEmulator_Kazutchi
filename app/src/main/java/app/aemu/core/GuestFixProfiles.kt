@@ -23,8 +23,11 @@ data class GuestFixTarget(
     fun property(name: String): String = properties[name].orEmpty()
 }
 
+enum class GuestFixPhase { IMPORT, BOOT }
+
 data class GuestFixRule(
     val id: String,
+    val phase: GuestFixPhase = GuestFixPhase.BOOT,
     val description: String,
     val api: IntRange? = null,
     val releases: Regex? = null,
