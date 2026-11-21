@@ -36,7 +36,7 @@ jobs:
       - name: Set up Android NDK
         uses: nttld/setup-ndk@v1
         with:
-          ndk-version: r27d
+          ndk-version: r21e
 
       - name: Build Android 4.4-compatible guest GLES bridge
         run: |
