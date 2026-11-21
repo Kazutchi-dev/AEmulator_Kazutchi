@@ -75,7 +75,7 @@ object GuestFixProfiles {
         GuestFixRule(
             id = "mtk-audio-hal-compat",
             description = "Replace the MediaTek primary audio HAL with the emulator-compatible HAL",
-            api = 17..20,
+            api = 17..Int.MAX_VALUE,
             engines = setOf(Engine.KK),
             apply = { swapMtkAudioHal() },
         ),
