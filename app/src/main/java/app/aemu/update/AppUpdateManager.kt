@@ -59,11 +59,13 @@ object AppUpdateManager {
             val array = JSONArray(text)
             if (array.length() == 0) return@runCatching null
 
+            var latestRelease: ReleaseInfo? = null
             for (i in 0 until array.length()) {
                 val rel = array.getJSONObject(i)
-                if (rel.optBoolean("draft", false)) continue
+                if (rel.optBoolean("draft", false) || rel.optBoolean("prerelease", false)) continue
 
                 val tagName = rel.optString("tag_name", "").trim()
+                if (tagName.isBlank()) continue
                 val versionName = tagName.removePrefix("v").removePrefix("V")
                 val title = rel.optString("name", tagName)
                 val body = rel.optString("body", "")
@@ -72,22 +74,27 @@ object AppUpdateManager {
                 for (j in 0 until assets.length()) {
                     val asset = assets.getJSONObject(j)
                     val assetName = asset.optString("name", "")
-                    if (assetName.endsWith(".apk", ignoreCase = true)) {
-                        val downloadUrl = asset.getString("browser_download_url")
-                        val sizeBytes = asset.optLong("size", 0L)
-                        return@runCatching ReleaseInfo(
-                            versionName = versionName,
-                            tagName = tagName,
-                            title = title,
-                            body = body,
-                            downloadUrl = downloadUrl,
-                            fileName = assetName,
-                            sizeBytes = sizeBytes
-                        )
+                    if (!assetName.endsWith(".apk", ignoreCase = true)) continue
+
+                    val downloadUrl = asset.optString("browser_download_url", "")
+                    if (downloadUrl.isBlank()) continue
+                    val candidate = ReleaseInfo(
+                        versionName = versionName,
+                        tagName = tagName,
+                        title = title,
+                        body = body,
+                        downloadUrl = downloadUrl,
+                        fileName = assetName,
+                        sizeBytes = asset.optLong("size", 0L)
+                    )
+                    val currentBest = latestRelease
+                    if (currentBest == null || isNewerVersion(candidate.versionName, currentBest.versionName)) {
+                        latestRelease = candidate
                     }
+                    break
                 }
             }
-            null
+            latestRelease
         }
     }
 
