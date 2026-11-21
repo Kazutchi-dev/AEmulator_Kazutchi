@@ -92,10 +92,19 @@ jobs:
           echo "$BADGING" | grep -F "package: name='app.aemu'"
           echo "$BADGING" | grep -F "versionName='${{ steps.version.outputs.name }}'"
 
+      - name: Point the release tag at this build commit
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git tag --force "$RELEASE_TAG" "$GITHUB_SHA"
+          git push --force origin "refs/tags/$RELEASE_TAG"
+
       - name: Publish GitHub Release with release notes
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           name: AEmulator Kazutchi ${{ steps.version.outputs.name }}
           body_path: release-notes/${{ steps.version.outputs.name }}.md
           draft: false
