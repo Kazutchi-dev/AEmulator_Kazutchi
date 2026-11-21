@@ -81,6 +81,7 @@ jobs:
           entries=(
             engines/kk/libashmemshim.so
             engines/kk/libGLES.so
+            engines/kk/libGLES_aemu.so
             engines/kk/audio.primary.default.so
             engines/kk/aemu-stubs.jar
             engines/common/libaemushim.so
