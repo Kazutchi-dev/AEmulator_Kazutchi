@@ -32,6 +32,11 @@
         android:theme="@style/Theme.AEmulator"
         tools:targetApi="28">
 
+        <!-- Android 17+: request ANGLE so the existing GLES bridge can run on its Vulkan backend when available. -->
+        <meta-data
+            android:name="com.android.graphics.driver.prefer_angle"
+            android:value="true" />
+
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"
