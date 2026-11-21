@@ -142,7 +142,7 @@ class GuestLmk(
 
     private fun loop() {
         if (preserveGuestProcesses) {
-            log("lmk: guest process preservation enabled; host memory pressure will not kill guest processes")
+            log("lmk: guest process preservation enabled; internal GuestLmk will not send SIGKILL (host kernel OOM remains independent)")
             // Keep the PID/importance table fresh, but never send SIGKILL from this policy.
             while (running) {
                 Thread.sleep(2000)

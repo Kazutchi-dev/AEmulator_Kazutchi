@@ -131,15 +131,18 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
     private val lazyStarts = HashMap<String, Int>()
     private val pgids = LinkedHashSet<Int>()
     @Volatile private var stopping = false
+    private val hostKillDiagnosticLogged = java.util.concurrent.atomic.AtomicBoolean(false)
 
     // ------------------------------------------------------------------ загрузка
 
     fun boot() {
         if (state == State.BOOTING || state == State.RUNNING || state == State.PREPARING) return
         stopping = false
+        hostKillDiagnosticLogged.set(false)
         failure = null
         setState(State.PREPARING)
         try {
+            log("host runtime baseline: ${HostProcessDiagnostics.snapshot()}")
             if (recoveryMode) doRecovery() else doBoot()
         } catch (t: Throwable) {
             failure = t.message ?: t.toString()
@@ -684,7 +687,16 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
     private fun startBinder() {
         val sock = paths.binderSock.absolutePath
         when (engine) {
-            Engine.KK -> spawn("binderd", listOf(paths.nativeBin(engine.binderd).absolutePath, "-s", sock), emptyMap())
+            Engine.KK -> {
+                val bin = paths.nativeBin(engine.binderd).absolutePath
+                val runnerBin = paths.nativeBin(engine.runner)
+                val cmd = if (runnerBin.canExecute() && paths.props.isFile)
+                    listOf(runnerBin.absolutePath, paths.props.absolutePath, "30", bin, "-s", sock)
+                else listOf(bin, "-s", sock)
+                log(if (cmd.first() == runnerBin.absolutePath) "binder: launching through dhdrun for process-group isolation"
+                    else "binder: dhdrun unavailable; using direct launch")
+                spawn("binderd", cmd, emptyMap())
+            }
             Engine.N64 -> {
                 val env = if (File(paths.bin, "binder.verbose").exists()) mapOf("AEMU_BINDER_VERBOSE" to "1") else emptyMap()
                 val bin = paths.nativeBin(kernel.binderd).absolutePath
@@ -827,8 +839,9 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
         }
         val p = pb.start()
         synchronized(procs) { procs[name] = p }
-        pidOf(p)?.let { pgids.add(it) }
-        log("· $name started")
+        val pid = pidOf(p)
+        pid?.let { pgids.add(it) }
+        log("· $name started" + (pid?.let { " (host ${HostProcessDiagnostics.process(it)})" } ?: ""))
         // init publishes every service's state; the framework waits on it (SystemService.waitForState: the WebView
         // zygote, the boot animation)
         props.put("init.svc.$name", "running")
@@ -840,7 +853,14 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
                 }
             }
             val code = runCatching { p.waitFor() }.getOrDefault(-1)
-            if (!stopping) log("· $name exited, code $code")
+            if (!stopping) {
+                log("· $name exited, code $code")
+                if (code == 137 && hostKillDiagnosticLogged.compareAndSet(false, true)) {
+                    val snapshot = HostProcessDiagnostics.snapshot()
+                    log("host runtime snapshot after first guest SIGKILL ($name pid=${pid ?: "?"}): $snapshot")
+                    runCatching { android.util.Log.w("AEMU_HOST_DIAG", "$name exited 137; $snapshot") }
+                }
+            }
             // a restarted service is already running again under this name
             synchronized(procs) { if (procs[name].let { it == null || it === p }) props.put("init.svc.$name", "stopped") }
         }, "log-$name").apply { isDaemon = true; start() }
