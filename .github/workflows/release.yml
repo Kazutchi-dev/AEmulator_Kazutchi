@@ -86,6 +86,7 @@ jobs:
       - name: Verify APK signature and package metadata
         run: |
           set -euo pipefail
+          echo "$ANDROID_HOME/build-tools/36.0.0" >> "$GITHUB_PATH"
           APK="$(find release-output -maxdepth 1 -name '*.apk' -print -quit)"
           apksigner verify --verbose "$APK"
           aapt dump badging "$APK" | grep -E "package: name='app.aemu'|versionName='${{ steps.version.outputs.name }}'"
