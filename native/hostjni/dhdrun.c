@@ -142,7 +142,15 @@ int main(int argc, char **argv) {
         }
     }
 
-    setpgid(0, 0);
+    // Verify process-group isolation instead of silently assuming it succeeded.
+    errno = 0;
+    const int pgid_rc = setpgid(0, 0);
+    const int pgid_errno = pgid_rc == 0 ? 0 : errno;
+    fprintf(stderr,
+            "dhdrun: pid=%d ppid=%d pgid=%d sid=%d setpgid=%s errno=%d\n",
+            getpid(), getppid(), getpgrp(), getsid(0),
+            pgid_rc == 0 ? "ok" : "FAILED", pgid_errno);
+    fflush(stderr);
 
     // Execute wrapped command
     execv(cmd, &argv[3]);
