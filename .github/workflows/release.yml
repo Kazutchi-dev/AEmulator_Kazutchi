@@ -27,7 +27,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION_NAME="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n1)"
+          VERSION_NAME="$(sed -n 's/^[[:space:]]*versionName = "\\([^"]*\\)".*/\\1/p' app/build.gradle.kts | head -n1)"
           test -n "$VERSION_NAME"
           echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION_NAME" >> "$GITHUB_OUTPUT"
@@ -63,9 +63,9 @@ jobs:
             exit 1
           fi
           test -f .github/signing/release.jks.gpg
-          gpg --batch --yes --pinentry-mode loopback \
-            --passphrase "$SIGNING_PASSPHRASE" \
-            --output release.jks \
+          gpg --batch --yes --pinentry-mode loopback \\
+            --passphrase "$SIGNING_PASSPHRASE" \\
+            --output release.jks \\
             --decrypt .github/signing/release.jks.gpg
           {
             echo "storeFile=release.jks"
@@ -84,12 +84,16 @@ jobs:
           test -s release-output/*.apk
 
       - name: Verify APK signature and package metadata
+        shell: bash
         run: |
           set -euo pipefail
-          echo "$ANDROID_HOME/build-tools/36.0.0" >> "$GITHUB_PATH"
+          export PATH="$ANDROID_HOME/build-tools/36.0.0:$PATH"
           APK="$(find release-output -maxdepth 1 -name '*.apk' -print -quit)"
+          test -n "$APK"
           apksigner verify --verbose "$APK"
-          aapt dump badging "$APK" | grep -E "package: name='app.aemu'|versionName='${{ steps.version.outputs.name }}'"
+          BADGING="$(aapt dump badging "$APK")"
+          echo "$BADGING" | grep -F "package: name='app.aemu'"
+          echo "$BADGING" | grep -F "versionName='${{ steps.version.outputs.name }}'"
 
       - name: Publish GitHub Release with release notes
         uses: softprops/action-gh-release@v2
