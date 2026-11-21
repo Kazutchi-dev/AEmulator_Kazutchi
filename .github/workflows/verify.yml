@@ -4,13 +4,15 @@ on:
   push:
     branches:
       - investigation/htc-one-44-runtime-crash
+    paths-ignore:
+      - app/src/main/assets/engines/kk/libGLES_aemu.so
   pull_request:
     branches:
       - main
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -30,6 +32,23 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           packages: platform-tools platforms;android-36 build-tools;36.0.0
+
+      - name: Set up Android NDK
+        uses: android-actions/setup-ndk@v3
+        with:
+          ndk-version: 27.2.12479018
+
+      - name: Build Android 4.4-compatible guest GLES bridge
+        run: |
+          chmod +x native/glbridge/build32.sh
+          ./native/glbridge/build32.sh
+          if ! git diff --quiet -- app/src/main/assets/engines/kk/libGLES_aemu.so; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add app/src/main/assets/engines/kk/libGLES_aemu.so
+            git commit -m "Build Android 4.4-compatible GLES bridge"
+            git push
+          fi
 
       - name: Build standard debug APK
         run: |
