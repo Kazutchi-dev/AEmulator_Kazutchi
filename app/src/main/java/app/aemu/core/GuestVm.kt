@@ -264,6 +264,11 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
         gpuRenderer = ""
         HostNative.limitStackSafe()
 
+        // Keep one immutable settings snapshot for every graphics decision in this boot.
+        val s = settings
+        log("graphics settings (boot snapshot): gpu=${s.gpu}, hwui=${s.hwui}, hostApi=${android.os.Build.VERSION.SDK_INT}")
+        if (!s.gpu) log("graphics: GPU acceleration explicitly disabled; software rendering requested")
+
         // 1. дерево
         val fixer = TreeFixer(ctx, paths, img, ::log)
         // Android 17 can prefer the system ANGLE GLES driver for this Java-launched host process.
@@ -272,13 +277,17 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
         val openGlFlag = File(paths.dir, "glopen")
         val autoAngleMarker = File(paths.dir, "glopen.angle-auto")
         val hostPrefersAngle = android.os.Build.VERSION.SDK_INT >= 37
-        // If this image moves to an older host OS, remove only the flag AEmulator created itself.
-        if (autoAngleMarker.exists() && !hostPrefersAngle) {
+        // Remove only AEmulator-managed flags when their host requirement disappears or GPU is disabled.
+        if (autoAngleMarker.exists() && (!hostPrefersAngle || !s.gpu)) {
             openGlFlag.delete()
             autoAngleMarker.delete()
-            log("graphics: automatic ANGLE route disabled on this older host OS")
+            if (!hostPrefersAngle) {
+                log("graphics: automatic ANGLE route disabled on this older host OS")
+            } else {
+                log("graphics: automatic ANGLE route removed because GPU acceleration is disabled")
+            }
         }
-        val autoAngleBridge = engine == Engine.KK && settings.gpu && img.api >= 19 &&
+        val autoAngleBridge = engine == Engine.KK && s.gpu && img.api >= 19 &&
             hostPrefersAngle && (!openGlFlag.exists() || autoAngleMarker.exists())
         if (autoAngleBridge) {
             paths.dir.mkdirs()
@@ -295,7 +304,6 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
         val sd = Sdcard.setup(ctx, paths, img, ::log)
 
         // 2. свойства
-        val s = settings
         val overrides = LinkedHashMap<String, String>()
         // 2.3: ro.kernel.qemu=1 включает в фреймворке режим эмулятора — ставим его только mediaserver
         overrides["ro.kernel.qemu"] = if (engine == Engine.GB) "0" else "1"
