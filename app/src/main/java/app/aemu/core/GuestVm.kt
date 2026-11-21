@@ -270,11 +270,20 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
         // Route KK's API 19+ guest GLES calls through the in-process host renderer so ANGLE can actually see them;
         // native glserverd executables cannot use Android's package-selected ANGLE driver.
         val openGlFlag = File(paths.dir, "glopen")
+        val autoAngleMarker = File(paths.dir, "glopen.angle-auto")
+        val hostPrefersAngle = android.os.Build.VERSION.SDK_INT >= 37
+        // If this image moves to an older host OS, remove only the flag AEmulator created itself.
+        if (autoAngleMarker.exists() && !hostPrefersAngle) {
+            openGlFlag.delete()
+            autoAngleMarker.delete()
+            log("graphics: automatic ANGLE route disabled on this older host OS")
+        }
         val autoAngleBridge = engine == Engine.KK && settings.gpu && img.api >= 19 &&
-            android.os.Build.VERSION.SDK_INT >= 37 && !openGlFlag.exists()
+            hostPrefersAngle && (!openGlFlag.exists() || autoAngleMarker.exists())
         if (autoAngleBridge) {
             paths.dir.mkdirs()
-            openGlFlag.writeText("2")
+            if (!openGlFlag.exists()) openGlFlag.writeText("2")
+            autoAngleMarker.writeText("1")
             log("graphics: enabling ANGLE-compatible in-process bridge for this host (Android 17+)")
         }
         val firmwarePrepAt = SystemClock.elapsedRealtime()
@@ -328,6 +337,7 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
                 GlHost.stop()
                 log("open GPU bridge unavailable; restoring isolated renderer")
                 File(paths.dir, "glopen").delete()
+                if (autoAngleBridge) autoAngleMarker.delete()
                 fixer.fixup()
                 if (!autoAngleBridge) File(paths.dir, "glopen").writeText(requestedMode)
             }
